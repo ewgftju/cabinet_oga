@@ -470,6 +470,11 @@ async function submitReply(form) {
 document.addEventListener("click", async e => {
   const el = e.target.closest("button,a,[data-case]");
   if (!el || !data) return;
+  if (el.matches("a.skip")) {
+    e.preventDefault();
+    $("#main-content")?.focus();
+    return;
+  }
   const action = el.dataset.action;
   try {
     if (action === "close") return close();

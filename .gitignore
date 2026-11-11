@@ -1,0 +1,7 @@
+dist/
+node_modules/
+var/
+.env
+.env.*
+*.pem
+*.sqlite*

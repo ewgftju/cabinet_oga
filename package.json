@@ -1,0 +1,13 @@
+{
+  "name": "saq-cabinet-oga",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs && node server/start.mjs --demo",
+    "start": "node server/start.mjs",
+    "test": "node --test"
+  }
+}

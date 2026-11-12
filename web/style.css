@@ -115,7 +115,7 @@ h3 {
   color: #103952
 }
 
-.brand:hover, .portal-link:hover, .navlink:hover, .identity-link:hover, .button:hover {
+.brand:hover, .navlink:hover, .identity-link:hover, .button:hover {
   text-decoration: none
 }
 
@@ -188,37 +188,8 @@ h3 {
   color: #005883
 }
 
-.navlink:hover, .portal-link:hover {
+.navlink:hover {
   background: #eef5f8
-}
-
-.navlink b {
-  margin-left: auto;
-  color: #815116;
-  background: #fff1d4;
-  font-size: 11px;
-  border-radius: 5px;
-  padding: 2px 7px
-}
-
-.side-bottom {
-  border-top: 1px solid var(--line);
-  padding: 16px 0;
-  margin-top: auto
-}
-
-.portal-link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #566d7a;
-  font-size: 12px;
-  padding: 10px 12px;
-  border-radius: 5px
-}
-
-.portal-link svg:last-child {
-  margin-left: auto
 }
 
 .stage {
@@ -621,6 +592,37 @@ h3 {
   font-weight: 650
 }
 
+.inbox-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 12px
+}
+
+.inbox-filters a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #425b6b
+}
+
+.inbox-filters a:hover, .inbox-filters a[aria-current] {
+  background: #e5f1f6;
+  color: #005883;
+  text-decoration: none
+}
+
+.inbox-filters a[aria-current] {
+  font-weight: 650
+}
+
+.inbox-filters a span {
+  font-variant-numeric: tabular-nums
+}
+
 .table-wrap {
   width: 100%;
   overflow: auto
@@ -914,6 +916,14 @@ h3 {
   margin-top: 6px;
   line-height: 1.4;
   display: block
+}
+
+.reply-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  margin-top: 6px
 }
 
 .doc-state, .receipt {

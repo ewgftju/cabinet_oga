@@ -46,10 +46,12 @@ const modal = $("#modal"),
   shell = $("#shell");
 
 function route() {
-  const [section = "checks", id] = location.hash.replace(/^#\/?/, "").split("/");
+  const [path, query] = location.hash.replace(/^#\/?/, "").split("?");
+  const [section, id] = path.split("/");
   return {
     section: section || "checks",
-    id
+    id,
+    inboxFilter: new URLSearchParams(query).get("filter")
   };
 }
 
@@ -90,10 +92,9 @@ function notice(msg) {
   notifyTimer = setTimeout(() => $("#toast").classList.remove("show"), 3900);
 }
 
-function link(path, icon, label, active, count) {
+function link(path, icon, label, active) {
   return '<a href="#/' + path + '" class="navlink' + (active ? " current" : "") + '"' + (active ?
-    ' aria-current="page"' : '') + '>' + i(icon, 19) + '<span>' + label + '</span>' + (count ? '<b>' +
-    count + '</b>' : '') + '</a>';
+    ' aria-current="page"' : '') + '>' + i(icon, 19) + '<span>' + label + '</span></a>';
 }
 
 function pageTitle() {
@@ -101,7 +102,7 @@ function pageTitle() {
     section,
     id
   } = route();
-  if (section === "inbox") return "На ознакомление";
+  if (section === "inbox") return "Входящие документы";
   if (section === "profile") return "Карточка объекта";
   if (section === "checks" && id) return findCase(id)?.number || "Проверка";
   return "Мои проверки";
@@ -114,8 +115,9 @@ function allDirections() {
 function render() {
   const {
     section,
-    id
-  } = route(), p = data.profile, n = counts();
+    id,
+    inboxFilter
+  } = route(), p = data.profile;
   const sub = pageTitle();
   document.title = sub + " · Кабинет ОГА · SAQ";
   shell.innerHTML = `
@@ -126,10 +128,9 @@ function render() {
         <div class="module-name"><span class="modmark">ОГА</span><b>Кабинет ОГА</b></div>
         <nav aria-label="Кабинет объекта">
           ${link("checks","folders","Мои проверки",section==="checks")}
-          ${link("inbox","inbox","На ознакомление",section==="inbox",n.unread)}
+          ${link("inbox","inbox","Входящие документы",section==="inbox")}
           ${link("profile","building","Карточка объекта",section==="profile")}
         </nav>
-        <div class="side-bottom"><a class="portal-link" href="https://smartaudit.kz/">${i("grid",17)} Главное меню SAQ ${i("external",14)}</a></div>
       </aside>
       <div class="stage">
         <header class="topbar">
@@ -140,7 +141,7 @@ function render() {
           </div>
         </header>
         <main id="main-content" tabindex="-1">
-          ${section==="profile"?profilePage():section==="inbox"?inboxPage():section==="checks"&&id?detailPage(findCase(id)):section==="checks"?registryPage():empty("Страница не найдена","Вернитесь в реестр проверок.",true)}
+          ${section==="profile"?profilePage():section==="inbox"?inboxPage(inboxFilter):section==="checks"&&id?detailPage(findCase(id)):section==="checks"?registryPage():empty("Страница не найдена","Вернитесь в реестр проверок.",true)}
         </main>
       </div>
     </div>`;
@@ -216,7 +217,7 @@ function rows() {
       return group + `<tr data-case="${esc(c.id)}" class="case-row"><td><a class="case-name" href="#/checks/${esc(c.id)}">${esc(c.title)}</a><small class="case-sub"><span>${esc(c.number)}</span><span>${esc(periodText(c))}</span></small></td>
         <td data-label="Направление">${tag(c.source)}</td><td data-label="Статус">${status(c.status)}</td>
         <td data-label="Документы"><span class="doc-count">${i("file",14)} ${c.documents.length}</span>
-        ${pending?'<small class="pending-text">'+pending+' на ознакомление</small>':'<small class="read-text">Все прочитаны</small>'}</td>
+        ${pending?'<small class="pending-text">'+pending+' на ознакомление</small>':'<small class="read-text">Ознакомление подтверждено</small>'}</td>
         <td class="row-go">${i("next",15)}</td></tr>`;
     }).join("") + '</tbody></table></div>';
 }
@@ -230,25 +231,49 @@ function docLabel(c, d) {
   return documentTitle(c.source, d.kind) || d.kind;
 }
 
+function canRespond(c, d) {
+  return c.source === "prof" && d.kind === "prescription" && d.points.length > 0;
+}
+
+function nextUnansweredPoint(d) {
+  return d.points.find(point => !d.responses.some(reply => reply.pointId === point.id));
+}
+
 function docLine(c, d, showCase = false) {
   const title = docLabel(c, d);
   const version = c.documents.some(x => x.sourceId === d.sourceId && x.id !== d.id) || d.version > 1;
+  const replyAction = canRespond(c, d) ? `<button class="text-button reply-link" data-reply-doc="${esc(d.id)}">${i("reply", 14)}${nextUnansweredPoint(d) ? "Ответить по пунктам" : "Ответы по пунктам"}</button>` : "";
   return `<article class="doc-line"><span class="pdf-mark" aria-hidden="true">PDF</span><div class="doc-text">
     <button class="text-button doc-name" data-doc="${esc(d.id)}">${esc(title)}</button>
     <div class="minor"><span>№ ${esc(d.number)}</span><span>${dateText(d.sentAt)}</span>${version?'<span>Версия '+d.version+'</span>':""}</div>
     ${showCase?'<a class="case-ref" href="#/checks/'+esc(c.id)+'">'+esc(c.number)+" · "+esc(c.title)+'</a>':""}
+    ${replyAction}
     </div><div class="doc-state ${d.receipt?"done":"waiting"}">${i(d.receipt?"checkCircle":"clock",15)}<span>${d.receipt?"Ознакомлен":"На ознакомление"}</span></div>
     <button class="button outline" data-doc="${esc(d.id)}">${d.receipt?"Открыть PDF":"Ознакомиться"}</button></article>`;
 }
 
-function inboxPage() {
-  const pending = data.cases.flatMap(c => c.documents.filter(d => !d.receipt).map(d => ({
-    c,
-    d
-  }))).sort((a, b) => b.d.sentAt.localeCompare(a.d.sentAt));
-  return `<div class="page-heading"><div><h1>На ознакомление</h1><p>Направленные документы, по которым ожидается ваша отметка</p></div></div>
-    <section class="panel"><div class="panel-heading"><div class="inline"><h2>Документы</h2><span class="counter">${pending.length}</span></div></div>
-    ${pending.length?pending.map(({c,d})=>docLine(c,d,true)).join(""):empty("Все документы прочитаны","Полученные документы доступны в карточках проверок.",true)}</section>`;
+function inboxPage(filter) {
+  const all = data.cases.flatMap(c => c.documents.map(d => ({ c, d })))
+    .sort((a, b) => b.d.sentAt.localeCompare(a.d.sentAt) || b.d.version - a.d.version);
+  const views = [
+    {key: "all", label: "Все документы", docs: all},
+    {key: "pending", label: "На ознакомление", docs: all.filter(({d}) => !d.receipt)},
+    {key: "acknowledged", label: "Ознакомленные", docs: all.filter(({d}) => d.receipt)}
+  ];
+  if (allDirections().includes("prof")) {
+    views.push({key: "reply", label: "Для ответа",
+      docs: all.filter(({c, d}) => canRespond(c, d) && nextUnansweredPoint(d))});
+  }
+  const current = views.find(view => view.key === filter) || views[0];
+  const links = views.map(view => {
+    const href = view.key === "all" ? "#/inbox" : "#/inbox?filter=" + view.key;
+    return `<a href="${href}" ${view === current ? 'aria-current="page"' : ''}>${view.label} <span>${view.docs.length}</span></a>`;
+  }).join("");
+  const emptyList = all.length ? empty("По этому фильтру документов нет", "Другие полученные документы доступны в разделе «Все документы».") :
+    empty("Входящих документов пока нет", "Здесь появятся документы, которые направят вашему объекту.");
+  return `<div class="page-heading"><div><h1>Входящие документы</h1><p>Документы по всем проверкам вашего объекта</p></div></div>
+    <section class="panel"><nav class="inbox-filters" aria-label="Фильтры входящих документов">${links}</nav>
+    ${current.docs.length ? current.docs.map(({c, d}) => docLine(c, d, true)).join("") : emptyList}</section>`;
 }
 
 function kv(label, value) {
@@ -361,12 +386,11 @@ async function showDoc(id) {
 }
 
 function docFooter(c, d) {
-  const hasPoints = c.source === "prof" && d.kind === "prescription" && d.points.length;
   const receipt = d.receipt ? '<span class="receipt done">' + i("checkCircle", 18) +
     '<span><b>Ознакомлен</b><small>' + esc(d.receipt.actor) + " · " + esc(stampText(d.receipt.at)) +
     '</small></span></span>' : '<span class="receipt waiting">' + i("clock", 17) +
     'Ожидает ознакомления</span>';
-  $("#doc-footer").innerHTML = receipt + '<div class="actions">' + (hasPoints ?
+  $("#doc-footer").innerHTML = receipt + '<div class="actions">' + (canRespond(c, d) ?
     '<button class="button outline" data-action="responses">' + i("reply", 16) + 'Ответ по предписанию' + (d
       .responses.length ? " (" + d.responses.length + ")" : "") + '</button>' : "") + (d.receipt ? "" :
     '<button class="button primary" data-action="ack">' + i("check", 16) +
@@ -390,6 +414,8 @@ function responsePanel() {
     <label>Подтверждающий документ <small>до 8 МБ</small><input type="file" name="file" required></label>
     <div class="form-error" role="alert" hidden></div><div class="actions"><button type="button" class="button outline" data-doc="${esc(d.id)}">К печатной форме</button><button class="button primary" type="submit">Направить ответ</button></div></form>
     ${history?'<div class="reply-history"><h3>Направленные ответы</h3>'+history+'</div>':""}</div>`);
+  const next = nextUnansweredPoint(d);
+  if (next) $("#response-form select").value = next.id;
   updatePoint();
 }
 
@@ -492,6 +518,15 @@ document.addEventListener("click", async e => {
       return;
     }
     if (el.dataset.doc) return showDoc(el.dataset.doc);
+    if (el.dataset.replyDoc) {
+      const found = findDocument(el.dataset.replyDoc);
+      if (found && canRespond(found.c, found.d)) {
+        clearModal();
+        viewer = found;
+        responsePanel();
+      }
+      return;
+    }
     if (el.dataset.source) {
       filters.source = el.dataset.source;
       draw();
@@ -519,7 +554,7 @@ document.addEventListener("click", async e => {
       return draw();
     }
     if (action === "inbox") {
-      location.hash = "/inbox";
+      location.hash = "/inbox?filter=pending";
       return;
     }
     if (action === "ack") return ack(el);
@@ -552,10 +587,12 @@ document.addEventListener("submit", e => {
   }
 });
 window.addEventListener("hashchange", () => {
+  const filterNavigation = document.activeElement?.closest(".inbox-filters");
   mobileOpen = false;
   close();
   if (data) {
     draw();
+    if (filterNavigation) shell.querySelector('.inbox-filters [aria-current="page"]')?.focus();
     window.scrollTo(0, 0);
   }
 });
@@ -568,6 +605,6 @@ try {
 } catch (error) {
   shell.innerHTML = '<div class="load-error">' + i("info", 28) + '<h1>Кабинет недоступен</h1><p>' + esc(error
       .message) +
-    '</p><div class="actions"><a class="button outline" href="https://smartaudit.kz/">На портал SAQ</a><button class="button primary" id="reload">Повторить</button></div></div>';
+    '</p><div class="actions"><button class="button primary" id="reload">Повторить</button></div></div>';
   $("#reload").addEventListener("click", () => location.reload());
 }

@@ -36,7 +36,7 @@ const json = (res, status, data) => {
   res.end(JSON.stringify(data));
 };
 const absent = () => new Problem(404, "Запись не найдена.");
-const unauthorized = () => new Problem(401, "Для доступа войдите через портал SAQ.");
+const unauthorized = () => new Problem(401, "Для доступа войдите в Кабинет ОГА через SAQ.");
 
 export function settings(env, directory, pem) {
   if (!env.OGA_ISSUER || !env.OGA_AUDIENCE) throw Error("Set OGA_ISSUER and OGA_AUDIENCE");

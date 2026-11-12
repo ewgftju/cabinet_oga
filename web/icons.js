@@ -22,7 +22,6 @@ const symbols = {
   close: '<path d="m5 5 14 14m0-14L5 19"/>',
   reply: '<path d="m9 5-6 6 6 6m-5-6h9a7 7 0 0 1 7 7"/>',
   sliders: '<path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
-  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   active: '<path d="M2 12h5l3-7 4 14 3-7h5"/>',
   bell: '<path d="M5 17h14l-2-3v-3a5 5 0 0 0-10 0v3zm5 3h4"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-9v.1"/>',
